@@ -192,18 +192,27 @@
     var autoCount = Object.keys(der.locks).filter(function (k) { return !overridden(k); }).length;
 
     var body = el("div", { class: "body", style: "display:block" });
-    var toFillCount = 0;
+    var toFillCount = 0, firstGroupShown = false;
     groups.forEach(function (g) {
-      var rows = [];
+      var rows = [], gToFill = 0;
       g.fields.forEach(function (f) {
         if (f.type === "heading" || f.type === "note") return;
         if (der.locks[f.key] && !overridden(f.key)) return;
         if (!vis(f, eff)) return;
         var n = field(f, m, { deps: eff }); if (!n) return;
         rows.push(n);
-        var val = m[f.key]; if (val == null || val === "" || (Array.isArray(val) && !val.length)) toFillCount++;
+        var val = m[f.key]; if (val == null || val === "" || (Array.isArray(val) && !val.length)) { toFillCount++; gToFill++; }
       });
-      if (rows.length) { body.appendChild(el("div", { class: "qhead", text: g.title })); rows.forEach(function (x) { body.appendChild(x); }); }
+      if (!rows.length) return;
+      var gk = "g_" + m.id + "_" + g.id;
+      var gopen = (openSections[gk] === undefined) ? !firstGroupShown : !!openSections[gk];  // first section open by default
+      firstGroupShown = true;
+      var gbody = el("div", { class: "body" }); rows.forEach(function (x) { gbody.appendChild(x); });
+      body.appendChild(el("div", { class: "acc sub" + (gopen ? " open" : "") }, [
+        el("div", { class: "ah", onclick: (function (k, cur) { return function () { openSections[k] = !cur; renderPeople(); }; })(gk, gopen) },
+          [el("span", { text: g.title }), el("span", { class: "rng", text: gToFill ? (gToFill + " to fill") : "done" })]),
+        gbody
+      ]));
     });
 
     // auto-filled drawer

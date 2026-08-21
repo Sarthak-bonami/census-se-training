@@ -53,18 +53,39 @@
     if ((member.age === "" || member.age == null) && member.dob) { var a = ageOf(member); if (a != null) put("age", String(a), "auto"); }
     var age = ageOf(member);
 
-    // 3) spouse name (Head <-> Husband/Wife)
     var head = byRel(fam, ["Head"])[0], spouse = byRel(fam, ["Husband/ Wife"])[0];
-    if (member.relationship === "Head" && spouse && spouse.name) put("spouse_name", spouse.name, "spouse");
-    if (member.relationship === "Husband/ Wife" && head && head.name) put("spouse_name", head.name, "spouse");
-
-    // 4) parents for a Son/Daughter -> the Head + spouse
-    if (member.relationship === "Son/ Daughter") {
-      var parents = [head, spouse].filter(Boolean);
-      var father = parents.filter(function (p) { return p.sex === "Male"; })[0];
-      var mother = parents.filter(function (p) { return p.sex === "Female"; })[0];
+    var setSpouse = function (name) { if (name) put("spouse_name", name, "spouse"); };
+    var married = function () { if (!member.marital) put("marital", "Currently Married", "auto"); };
+    var setParents = function (father, mother) {
       if (father) { put("father_is_member", true, "parent"); put("father_name", father.name, "parent"); put("father_dob", father.dob, "parent"); put("father_religion", religion, "family"); }
       if (mother) { put("mother_is_member", true, "parent"); put("mother_name", mother.name, "parent"); put("mother_dob", mother.dob, "parent"); put("mother_religion", religion, "family"); }
+    };
+
+    // 3) couples — spouse name + "Currently Married" (both directions)
+    if (member.relationship === "Head" && spouse) { setSpouse(spouse.name); married(); }
+    if (member.relationship === "Husband/ Wife") { if (head) setSpouse(head.name); married(); }
+
+    // in-laws are married by definition; pair them to the unambiguous child
+    var kids = byRel(fam, ["Son/ Daughter"]);
+    if (member.relationship === "Daughter-in-law (Son's Wife)") {
+      married(); var sons = kids.filter(function (k) { return k.sex === "Male"; }); if (sons.length === 1) setSpouse(sons[0].name);
+    }
+    if (member.relationship === "Son-in-law (Daughter's Husband)") {
+      married(); var daus = kids.filter(function (k) { return k.sex === "Female"; }); if (daus.length === 1) setSpouse(daus[0].name);
+    }
+
+    // 4) parents of a Son/Daughter -> the Head + spouse; plus reciprocal in-law spouse
+    if (member.relationship === "Son/ Daughter") {
+      var parents = [head, spouse].filter(Boolean);
+      setParents(parents.filter(function (p) { return p.sex === "Male"; })[0], parents.filter(function (p) { return p.sex === "Female"; })[0]);
+      var wantInlaw = member.sex === "Male" ? "Daughter-in-law (Son's Wife)" : member.sex === "Female" ? "Son-in-law (Daughter's Husband)" : null;
+      if (wantInlaw) { var sp = byRel(fam, [wantInlaw]); if (sp.length === 1) { setSpouse(sp[0].name); married(); } }
+    }
+
+    // 4b) parents of the Head, when the Head's parents are members ("Parents (Father/ Mother)")
+    if (member.relationship === "Head") {
+      var pm = byRel(fam, ["Parents (Father/ Mother)"]);
+      if (pm.length) setParents(pm.filter(function (p) { return p.sex === "Male"; })[0], pm.filter(function (p) { return p.sex === "Female"; })[0]);
     }
 
     // 5) permanent address = same as head (everyone except the head)

@@ -50,6 +50,10 @@ main#editor{margin-top:8px}
 .acc > .ah .rng{font-size:10px;color:var(--muted);font-weight:600}
 .acc > .body{padding:6px 11px 12px;display:none}
 .acc.open > .body{display:block}
+.acc.member > .ah{background:#f7f9fb}
+.acc.sub{margin:8px 0;border-radius:8px}
+.acc.sub > .ah{background:#fcfdff;font-weight:600;padding:7px 10px}
+.acc.sub > .ah .rng{color:var(--accent-dark)}
 .f{margin:8px 0}
 .f > label{margin-bottom:2px}
 .f .choices{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:3px}
