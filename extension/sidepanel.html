@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header>
+    <h1>SE Family Autofill</h1>
+    <p class="note">Save a household once, then autofill the SE form member-by-member. Data stays on this device (chrome.storage).</p>
+  </header>
+
+  <!-- Family bar -->
+  <section class="bar">
+    <select id="familySelect" title="Select family"></select>
+    <button id="newFamily" class="sm">+ Family</button>
+    <button id="deleteFamily" class="sm quiet">Delete</button>
+  </section>
+
+  <div id="detectBanner" class="detect" hidden></div>
+
+  <section id="familyDetails" class="panel">
+    <div class="row2">
+      <label>Family name<input id="familyName" type="text" placeholder="e.g. Family 1" /></label>
+      <label>Phone number<input id="familyPhone" type="tel" maxlength="10" placeholder="10-digit (5–9 first)" /></label>
+    </div>
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="autoDetect" checked /> Auto-detect family by phone on the page</label>
+      <label class="toggle"><input type="checkbox" id="autoFillMatch" /> Auto-fill the screen when a family is recognised</label>
+    </div>
+  </section>
+
+  <!-- Members -->
+  <section class="panel">
+    <div class="section-head">
+      <strong>Members</strong>
+      <button id="addMember" class="sm">+ Add member</button>
+    </div>
+    <div id="memberChips" class="chips"></div>
+  </section>
+
+  <!-- Actions -->
+  <section class="actions">
+    <button id="fillScreen" class="primary" title="Fill whatever SE screen is open, for the selected member">Fill current screen</button>
+    <button id="autoRun" title="Fill Q7–Q40 and click Save & Continue through all sections">Auto-fill all sections</button>
+    <button id="addAll" title="On the Basic Information screen, add every family member to the roster">Add all members to roster</button>
+  </section>
+
+  <div id="status" class="status" hidden></div>
+
+  <!-- Member editor -->
+  <main id="editor"></main>
+
+  <footer>
+    <div class="io">
+      <button id="exportFamily" class="sm">Export family (JSON)</button>
+      <button id="importFamily" class="sm">Import family</button>
+    </div>
+    <span class="hint">Nothing is submitted — review the page and submit it yourself.</span>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="schema.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

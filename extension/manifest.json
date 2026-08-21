@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "SE Family Autofill",
+  "version": "2.0.0",
+  "description": "Store a whole family once (by phone number) and autofill the Self-Enumeration form member-by-member. Data stays on this device.",
+  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "action": { "default_title": "Open SE Family Autofill" }
+}
