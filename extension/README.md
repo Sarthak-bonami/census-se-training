@@ -19,20 +19,24 @@ and best-effort on the live census portal.
 2. **Load unpacked** → select this folder
 3. Pin it, open the SE form (the replica or the live site), click the icon → the side panel opens
 
-## Everyday flow
+## Everyday flow — one form per family
 1. **Create a family** (`+ Family`), give it a **name** ("Family 1") and the household
    **phone number**.
 2. **Fill the household basics once** — open *"Household — shared by all members"* and set
-   religion, mother tongue, caste (SC/ST), nationality and usual residence. These are shared
-   by everyone and locked on each member.
-3. **Add members** (`+ Add member`) — for each person the editor leads with
-   *"✅ N details auto-filled — please fill M more"* and shows only what's left. Everything
-   shared or derivable (parents, spouse, age from DOB, children's defaults) is pre-filled and
-   sits in the **"Auto-filled for you"** drawer (locked, tagged by source, with **Edit** to
-   override). See [`OPTIMIZATIONS.md`](OPTIMIZATIONS.md) for the full list.
-4. Open the SE form. On the **Basic Information** screen click **① Add everyone to the form**.
-5. Go to the dashboard → open a member → **② Fill this person's questions** (fills Q7–Q40 and
-   clicks *Save & Continue* through the wizard). Or **Fill just this screen** to do one screen.
+   caste (SC/ST), mother tongue, nationality and usual residence. **Religion defaults to
+   Jain.** These are shared by everyone and locked on each member.
+3. **Add people** (`+ Add member`). Each person is a compact card that leads with
+   *"✅ N auto · M to fill"* and shows only what's left; everything shared or derivable
+   (parents, spouse, age from DOB, children's defaults) is pre-filled and tucked in the
+   **"Auto-filled for you"** drawer — locked, tagged by source, with **Edit** to override.
+   See [`OPTIMIZATIONS.md`](OPTIMIZATIONS.md).
+
+Then, filling the census site — **family by family, one press per screen**:
+4. Open the SE site. The panel **recognises the phone** and loads that family; on the
+   questionnaire it also reads **who the page is on** (by name).
+5. Press **⚡ Autofill this page** as you go: on the *Basic Information* screen it adds
+   everyone; on a person's questions it fills **that** person; elsewhere it fills the open
+   screen. (Turn on *Auto-fill when recognised* to have it happen automatically.)
 6. Review the page and submit it yourself. **The extension never submits.**
 
 ## Auto-recognition by phone

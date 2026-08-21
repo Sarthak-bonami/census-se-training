@@ -8,7 +8,9 @@
   var STORE = "se_family_state_v1";
 
   var state = { families: [], currentFamilyId: null, currentMemberId: null };
-  var openSections = { basic: true };   // which editor accordions are open
+  var openSections = {};        // which per-member "auto-filled" drawers are open (by member id)
+  var openMember = {};          // which member cards are expanded (by member id)
+  var lastCtx = { phone: "", screen: "other", member: "" };  // last page context seen
 
   // Minimal text hints for the LIVE census site fallback (replica uses data-se).
   var HINTS = {
@@ -36,7 +38,7 @@
     return f.members.filter(function (m) { return m.id === state.currentMemberId; })[0] || null;
   }
   function newFamily() {
-    var f = { id: uid(), name: "Family " + (state.families.length + 1), phone: "", household: {}, members: [] };
+    var f = { id: uid(), name: "Family " + (state.families.length + 1), phone: "", household: { religion: "Jain" }, members: [] };
     state.families.push(f); state.currentFamilyId = f.id;
     addMember(); persist();
   }
@@ -161,26 +163,14 @@
   }
 
   function memberLabel(m, i) {
-    return (m.name && m.name.trim()) ? m.name : ("Member " + (i + 1));
+    return (m.name && m.name.trim()) ? m.name : ("Person " + (i + 1));
   }
-  function updateChips() {
-    var box = document.getElementById("memberChips"); clear(box);
-    var f = currentFamily();
-    if (!f) { box.appendChild(el("div", { class: "empty", text: "Create a family to begin." })); return; }
-    if (!f.members.length) { box.appendChild(el("div", { class: "empty", text: "No members yet." })); return; }
-    f.members.forEach(function (m, i) {
-      var chip = el("div", { class: "chip" + (m.id === state.currentMemberId ? " active" : ""), onclick: function () { state.currentMemberId = m.id; persist(); renderAll(); } }, [
-        el("span", { text: memberLabel(m, i) }),
-        m.relationship ? el("span", { class: "badge", text: m.relationship === "Head" ? "HEAD" : (m.relationship.split(" ")[0]) }) : null,
-        el("button", { class: "x", title: "Remove", onclick: function (e) {
-          e.stopPropagation();
-          f.members = f.members.filter(function (x) { return x.id !== m.id; });
-          if (state.currentMemberId === m.id) state.currentMemberId = f.members.length ? f.members[0].id : null;
-          persist(); renderAll();
-        } }, ["×"])
-      ]);
-      box.appendChild(chip);
-    });
+  function updateChips() { /* no-op: counts refresh on the next full render (keeps text focus) */ }
+  function norm(s) { return (s || "").toString().toLowerCase().replace(/\s+/g, " ").trim(); }
+  function memberByName(fam, name) {
+    var w = norm(name); if (!fam || !w) return null;
+    return fam.members.filter(function (m) { return norm(m.name) === w; })[0]
+        || fam.members.filter(function (m) { return norm(m.name) && (w.indexOf(norm(m.name)) >= 0 || norm(m.name).indexOf(w) >= 0); })[0] || null;
   }
 
   // The household "fill once" panel (shared by everyone).
@@ -188,43 +178,35 @@
     var box = document.getElementById("householdFields"); if (!box) return; clear(box);
     var fam = currentFamily(); if (!fam) return;
     if (!fam.household) fam.household = {};
+    if (!fam.household.religion) fam.household.religion = "Jain";  // default religion
     OPT.HOUSEHOLD_FIELDS.forEach(function (f) { var n = field(f, fam.household); if (n) box.appendChild(n); });
   }
 
-  // Member editor — "what's left" first, auto-filled details tucked in a drawer.
-  function renderEditor() {
-    var box = document.getElementById("editor"); clear(box);
-    var fam = currentFamily(), m = currentMember();
-    if (!m) { box.appendChild(el("div", { class: "empty", text: "Add a member to edit their details." })); return; }
+  // Build one member's body: "what's left" fields + an "auto-filled" drawer.
+  function buildMemberBody(fam, m) {
     var r = effective(fam, m), der = r.der, eff = r.eff;
     var overridden = function (k) { return m.overrides && m.overrides[k]; };
-    var mIdx = fam.members.indexOf(m);
-
     var groups = [{ id: "basic", title: "Basic details", fields: SCHEMA.MEMBER_FIELDS }].concat(
       SCHEMA.SECTIONS.filter(function (s) { return !(s.appliesTo && !s.appliesTo(eff)); })
         .map(function (s) { return { id: s.id, title: s.title, fields: s.questions }; }));
-
     var autoCount = Object.keys(der.locks).filter(function (k) { return !overridden(k); }).length;
 
-    // "Still to fill" — only editable, visible, unanswered/answerable fields.
-    var toFill = el("div", {}), toFillCount = 0;
+    var body = el("div", { class: "body", style: "display:block" });
+    var toFillCount = 0;
     groups.forEach(function (g) {
       var rows = [];
       g.fields.forEach(function (f) {
         if (f.type === "heading" || f.type === "note") return;
-        if (der.locks[f.key] && !overridden(f.key)) return;   // auto-filled -> drawer
+        if (der.locks[f.key] && !overridden(f.key)) return;
         if (!vis(f, eff)) return;
         var n = field(f, m, { deps: eff }); if (!n) return;
         rows.push(n);
         var val = m[f.key]; if (val == null || val === "" || (Array.isArray(val) && !val.length)) toFillCount++;
       });
-      if (rows.length) { toFill.appendChild(el("div", { class: "qhead", text: g.title })); rows.forEach(function (x) { toFill.appendChild(x); }); }
+      if (rows.length) { body.appendChild(el("div", { class: "qhead", text: g.title })); rows.forEach(function (x) { body.appendChild(x); }); }
     });
 
-    box.appendChild(el("div", { class: "savings", text: "✅ " + autoCount + " details auto-filled for " + memberLabel(m, mIdx) + "." + (toFillCount ? (" Please fill " + toFillCount + " more below.") : " Nothing left to fill 🎉") }));
-    box.appendChild(toFill);
-
-    // "Auto-filled for you" drawer — locked, viewable, with per-field Edit override.
+    // auto-filled drawer
     var doneBody = el("div", { class: "body" }); var anyDone = false;
     groups.forEach(function (g) {
       g.fields.forEach(function (f) {
@@ -239,16 +221,43 @@
       });
     });
     if (anyDone) {
-      var open = !!openSections.done;
-      box.appendChild(el("div", { class: "acc" + (open ? " open" : "") }, [
-        el("div", { class: "ah", onclick: function () { openSections.done = !openSections.done; renderEditor(); } },
+      var dk = "d_" + m.id, open = !!openSections[dk];
+      body.appendChild(el("div", { class: "acc" + (open ? " open" : "") }, [
+        el("div", { class: "ah", onclick: function () { openSections[dk] = !openSections[dk]; renderPeople(); } },
           [el("span", { text: "Auto-filled for you (" + autoCount + ")" }), el("span", { class: "rng", text: open ? "hide" : "show" })]),
         doneBody
       ]));
     }
+    return { body: body, autoCount: autoCount, toFillCount: toFillCount };
   }
 
-  function renderAll() { renderFamilyBar(); renderHousehold(); updateChips(); renderEditor(); }
+  // People list — one form per family, each person a compact expandable card.
+  function renderPeople() {
+    var box = document.getElementById("editor"); clear(box);
+    var fam = currentFamily();
+    if (!fam) { box.appendChild(el("div", { class: "empty", text: "Create a family to begin." })); return; }
+    if (!fam.members.length) { box.appendChild(el("div", { class: "empty", text: "No people yet — click “+ Add member”." })); return; }
+    fam.members.forEach(function (m, i) {
+      var built = buildMemberBody(fam, m);
+      var open = !!openMember[m.id];
+      var summary = "✅ " + built.autoCount + " auto" + (built.toFillCount ? " · " + built.toFillCount + " to fill" : " · done");
+      var head = el("div", { class: "ah", onclick: function () { openMember[m.id] = !openMember[m.id]; state.currentMemberId = m.id; persist(); renderPeople(); } }, [
+        el("div", {}, [
+          el("strong", { text: memberLabel(m, i) }), " ",
+          m.relationship ? el("span", { class: "badge" + (m.relationship === "Head" ? " head" : ""), text: m.relationship === "Head" ? "HEAD" : m.relationship.split(" ")[0] }) : null
+        ]),
+        el("div", { style: "display:flex;align-items:center;gap:8px" }, [
+          el("span", { class: "rng", text: summary }),
+          el("button", { class: "x", title: "Remove", onclick: function (e) { e.stopPropagation(); if (!confirm("Remove " + memberLabel(m, i) + "?")) return; fam.members = fam.members.filter(function (x) { return x.id !== m.id; }); persist(); renderPeople(); } }, ["×"])
+        ])
+      ]);
+      var card = el("div", { class: "acc member" + (open ? " open" : "") }, [head]);
+      if (open) card.appendChild(built.body);
+      box.appendChild(card);
+    });
+  }
+
+  function renderAll() { renderFamilyBar(); renderHousehold(); renderPeople(); }
 
   /* ---- talking to the page -------------------------------------------- */
   function say(text, cls) {
@@ -275,18 +284,42 @@
     return out;
   }
 
-  function fillScreen() {
-    var f = currentFamily(), m = currentMember(); if (!m) { say("Select a member first.", "err"); return; }
+  // The member to fill: whoever the SE page is currently on (matched by name),
+  // else the last-opened card, else the first person.
+  function targetMember(fam) {
+    return memberByName(fam, lastCtx.member) || currentMember() || (fam && fam.members[0]) || null;
+  }
+
+  // ONE smart button: does the right thing for whatever SE screen is open.
+  function autofillPage() {
+    var f = currentFamily(); if (!f) { say("Create a family first.", "err"); return; }
     withContent(function (tab) {
-      say("Filling this screen for " + memberLabel(m, 0) + "…");
-      chrome.tabs.sendMessage(tab.id, { cmd: "FILL", answers: resolvedAnswers(f, m), hints: HINTS }, function () { void chrome.runtime.lastError; });
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readContext }, function (res) {
+        var ctx = (res && res[0] && res[0].result) || { screen: "other", member: "" };
+        lastCtx = { phone: ctx.phone || lastCtx.phone, screen: ctx.screen, member: ctx.member };
+        if (ctx.screen === "members") {
+          say("Adding " + f.members.length + " member(s) to the roster…");
+          chrome.tabs.sendMessage(tab.id, { cmd: "ADD_ALL_MEMBERS", members: f.members.map(function (m) { return resolvedAnswers(f, m); }) }, function () { void chrome.runtime.lastError; });
+        } else if (ctx.screen === "questionnaire") {
+          var m = targetMember(f); if (!m) { say("No matching person for this page.", "err"); return; }
+          say("Filling all questions for " + memberLabel(m, f.members.indexOf(m)) + "…");
+          chrome.tabs.sendMessage(tab.id, { cmd: "AUTORUN_SECTIONS", answers: resolvedAnswers(f, m), hints: HINTS }, function () { void chrome.runtime.lastError; });
+        } else {
+          var m2 = targetMember(f); if (!m2) { say("Open the SE members or questionnaire screen, then press this.", "err"); return; }
+          say("Filling this screen for " + memberLabel(m2, f.members.indexOf(m2)) + "…");
+          chrome.tabs.sendMessage(tab.id, { cmd: "FILL", answers: resolvedAnswers(f, m2), hints: HINTS }, function () { void chrome.runtime.lastError; });
+        }
+      });
     });
   }
-  function autoRun() {
-    var f = currentFamily(), m = currentMember(); if (!m) { say("Select a member first.", "err"); return; }
+
+  // "Fill just this screen" — fills the current screen for the matched/target person.
+  function fillScreen() {
+    var f = currentFamily(); if (!f) { say("Create a family first.", "err"); return; }
+    var m = targetMember(f); if (!m) { say("Add a person first.", "err"); return; }
     withContent(function (tab) {
-      say("Filling all questions for " + memberLabel(m, 0) + "…");
-      chrome.tabs.sendMessage(tab.id, { cmd: "AUTORUN_SECTIONS", answers: resolvedAnswers(f, m), hints: HINTS }, function () { void chrome.runtime.lastError; });
+      say("Filling this screen for " + memberLabel(m, f.members.indexOf(m)) + "…");
+      chrome.tabs.sendMessage(tab.id, { cmd: "FILL", answers: resolvedAnswers(f, m), hints: HINTS }, function () { void chrome.runtime.lastError; });
     });
   }
   function addAll() {
@@ -294,6 +327,13 @@
     withContent(function (tab) {
       say("Adding " + f.members.length + " member(s) to the roster…");
       chrome.tabs.sendMessage(tab.id, { cmd: "ADD_ALL_MEMBERS", members: f.members.map(function (m) { return resolvedAnswers(f, m); }) }, function () { void chrome.runtime.lastError; });
+    });
+  }
+  function autoRun() {
+    var f = currentFamily(); var m = targetMember(f); if (!m) { say("Add a person first.", "err"); return; }
+    withContent(function (tab) {
+      say("Filling all questions for " + memberLabel(m, f.members.indexOf(m)) + "…");
+      chrome.tabs.sendMessage(tab.id, { cmd: "AUTORUN_SECTIONS", answers: resolvedAnswers(f, m), hints: HINTS }, function () { void chrome.runtime.lastError; });
     });
   }
 
@@ -325,7 +365,12 @@
     if (q('[data-se="login_mobile"]') || q('[data-se="otp"]')) screen = "login";
     else if (q('[data-se="name"]') && q('[data-se="relationship"]')) screen = "members";
     else if (document.querySelector(".stepper") || q('[data-se="nationality"]')) screen = "questionnaire";
-    return { phone: /^\d{10}$/.test(phone) ? phone : "", screen: screen };
+    // Who the site is currently on: "Completing details for <name>" / "details for <name>".
+    var member = "";
+    var t = [].slice.call(document.querySelectorAll("h1,h2,h3,.se-title")).map(function (e) { return e.textContent || ""; })
+      .filter(function (x) { return /details for\s+/i.test(x); })[0];
+    if (t) member = t.replace(/^.*details for\s+/i, "").replace(/\s+$/, "").trim();
+    return { phone: /^\d{10}$/.test(phone) ? phone : "", screen: screen, member: member };
   }
 
   var detectTimer = null, lastAutoFillKey = "";
@@ -342,12 +387,13 @@
     });
   }
   function handleContext(ctx) {
+    lastCtx = { phone: ctx.phone || "", screen: ctx.screen || "other", member: ctx.member || "" };
     var banner = document.getElementById("detectBanner");
     if (!ctx.phone) { banner.hidden = true; return; }
     var match = state.families.filter(function (f) { return (f.phone || "") === ctx.phone; })[0];
     if (!match) {
       banner.hidden = false; banner.className = "detect warn";
-      banner.textContent = "📱 " + ctx.phone + " — no saved family. Set this number as a family's phone to auto-fill it.";
+      banner.textContent = "📱 " + ctx.phone + " — no saved family yet. Set this number as a family's phone to autofill it.";
       return;
     }
     // Recognised — select that family automatically.
@@ -356,16 +402,17 @@
       state.currentMemberId = match.members[0] ? match.members[0].id : null;
       persist(); renderAll();
     }
+    var onPerson = ctx.member ? (memberByName(match, ctx.member) ? " · on " + ctx.member : " · on “" + ctx.member + "” (not in this family)") : "";
     banner.hidden = false; banner.className = "detect";
-    banner.textContent = "📱 Recognised " + match.name + " (" + ctx.phone + ") · " + match.members.length + " member(s)";
+    banner.textContent = "📱 " + match.name + " (" + ctx.phone + ") · " + match.members.length + " member(s)" + onPerson;
 
-    // Optional auto-fill, once per (phone + screen) so it doesn't loop.
+    // Optional auto-fill, once per (phone + screen + person) so it doesn't loop.
     if (document.getElementById("autoFillMatch").checked) {
-      var key = ctx.phone + ":" + ctx.screen;
+      var key = ctx.phone + ":" + ctx.screen + ":" + ctx.member;
       if (key !== lastAutoFillKey && (ctx.screen === "members" || ctx.screen === "questionnaire")) {
         lastAutoFillKey = key;
         if (ctx.screen === "members") addAll();
-        else autoRun();
+        else { var m = targetMember(match); if (m) autoRun(); }
       }
     }
   }
@@ -405,10 +452,13 @@
     };
     document.getElementById("familyName").oninput = function (e) { var f = currentFamily(); if (f) { f.name = e.target.value; persist(); renderFamilyBar(); } };
     document.getElementById("familyPhone").oninput = function (e) { var f = currentFamily(); if (f) { f.phone = e.target.value.replace(/\D/g, "").slice(0, 10); e.target.value = f.phone; persist(); renderFamilyBar(); } };
-    document.getElementById("addMember").onclick = function () { if (!currentFamily()) newFamily(); addMember(); renderAll(); };
+    document.getElementById("addMember").onclick = function () {
+      if (!currentFamily()) newFamily(); addMember();
+      var f = currentFamily(); if (f && f.members.length) { openMember = {}; openMember[f.members[f.members.length - 1].id] = true; }
+      renderAll();
+    };
+    document.getElementById("autofillPage").onclick = autofillPage;
     document.getElementById("fillScreen").onclick = fillScreen;
-    document.getElementById("autoRun").onclick = autoRun;
-    document.getElementById("addAll").onclick = addAll;
     document.getElementById("exportFamily").onclick = exportFamily;
     document.getElementById("importFamily").onclick = importFamily;
     document.getElementById("autoDetect").onchange = function (e) {

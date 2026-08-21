@@ -54,16 +54,18 @@ up or move it to another machine (**Import family** pastes it back).
 
 ---
 
-## 5. Autofill the form
+## 5. Autofill the form — one button, family by family
 
-Open the SE form (the replica for training, or the live portal), then in the panel:
+Open the SE form (the replica for training, or the live portal). The panel **recognises the
+phone number** on the page and loads that family; on the questionnaire it also reads **which
+person the page is on** (by name). Then just press **⚡ Autofill this page** as you move:
 
-- **Add all members to roster** — on the *Basic Information* screen, adds every member (Q1–6)
-  in turn.
-- **Auto-fill all sections** — on a member's questionnaire, fills Q7–Q40 and clicks *Save &
-  Continue* through all 8 sections.
-- **Fill current screen** — fills just the visible screen for the selected member (you click
-  the buttons yourself).
+- On the **Basic Information** screen → it adds **everyone** to the roster.
+- On a **person's questions** → it fills **that** person (Q7–Q40) and clicks *Save & Continue*.
+- Anywhere else → it fills the open screen for the matched person.
+
+Prefer hands-off? Tick **Auto-fill when recognised** and it fills automatically as you land on
+each screen. **Fill just this screen** is there for manual, one-screen control.
 
 Then **review the page and submit it yourself** — the extension never submits.
 

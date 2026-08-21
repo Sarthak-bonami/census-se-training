@@ -40,22 +40,20 @@
     <div id="householdFields" hidden></div>
   </section>
 
-  <!-- Members -->
-  <section class="panel">
-    <div class="section-head">
-      <strong>Members</strong>
-      <button id="addMember" class="sm">+ Add member</button>
-    </div>
-    <div id="memberChips" class="chips"></div>
-  </section>
-
   <!-- Actions -->
   <section class="actions">
-    <button id="addAll" class="primary" title="On the Basic Information screen, add every family member to the roster">① Add everyone to the form</button>
-    <button id="autoRun" title="Fill Q7–Q40 and click Save & Continue through all sections for the selected member">② Fill this person’s questions</button>
-    <button id="fillScreen" title="Fill just the screen that's open now, for the selected member">Fill just this screen</button>
+    <button id="autofillPage" class="primary" title="Fills whatever SE screen is open, for this family — adds the roster on the members screen, and fills the matching person on the questionnaire">⚡ Autofill this page</button>
+    <button id="fillScreen" title="Fill just the screen that's open now (advanced)">Fill just this screen</button>
   </section>
-  <p class="hint" style="margin:6px 2px 0">Do ① on the “Basic Information” screen, then open a member on the dashboard and do ②. Then review the page and submit it yourself.</p>
+  <p class="hint" style="margin:6px 2px 0">Open the SE site, then press <strong>⚡ Autofill this page</strong> as you go. On the members screen it adds everyone; on a person's questions it fills that person. Then review &amp; submit yourself.</p>
+
+  <!-- People (one form per family) -->
+  <section class="panel">
+    <div class="section-head">
+      <strong>People in this family</strong>
+      <button id="addMember" class="sm">+ Add member</button>
+    </div>
+  </section>
 
   <div id="status" class="status" hidden></div>
 

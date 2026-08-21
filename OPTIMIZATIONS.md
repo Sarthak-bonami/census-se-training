@@ -11,7 +11,8 @@ Below are the reductions, grouped by how the value is obtained. (A 10-year-old c
 a 3-person family goes from ~40 questions to ~16 — the rest are auto-filled.)
 
 ## A. Fill once for the whole household → locked on every member  (tag: 🔒 from family)
-1. **Religion** (Q9) — one value for the home.
+1. **Religion** (Q9) — one value for the home; **defaults to Jain** (change it in the
+   household panel if a family differs).
 2. **Nationality** (Q8) — household default (usually Indian).
 3. **Scheduled Caste? / Scheduled Tribe?** (Q10a/b) — caste status is family-wide.
 4. **Caste / Tribe name** (Q10a/b name) — filled once when SC/ST is Yes.

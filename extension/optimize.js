@@ -38,12 +38,16 @@
   function byRel(fam, rels) { return (fam.members || []).filter(function (x) { return rels.indexOf(x.relationship) >= 0; }); }
 
   // Returns { values:{key:val}, locks:{key:reason} }  reason: family|spouse|parent|auto
+  var DEFAULT_RELIGION = "Jain";
+
   function deriveMember(fam, member) {
     var H = fam.household || {}, values = {}, locks = {};
     function put(k, v, why) { if (v !== undefined && v !== "" && v !== null) { values[k] = v; locks[k] = why; } }
+    var religion = H.religion || DEFAULT_RELIGION;   // religion defaults to Jain
 
     // 1) household-shared
     HOUSEHOLD_KEYS.concat(NATIVE.map(function (f) { return f.key; })).forEach(function (k) { put(k, H[k], "family"); });
+    put("religion", religion, "family");
 
     // 2) age from DOB
     if ((member.age === "" || member.age == null) && member.dob) { var a = ageOf(member); if (a != null) put("age", String(a), "auto"); }
@@ -59,8 +63,8 @@
       var parents = [head, spouse].filter(Boolean);
       var father = parents.filter(function (p) { return p.sex === "Male"; })[0];
       var mother = parents.filter(function (p) { return p.sex === "Female"; })[0];
-      if (father) { put("father_is_member", true, "parent"); put("father_name", father.name, "parent"); put("father_dob", father.dob, "parent"); put("father_religion", H.religion, "family"); }
-      if (mother) { put("mother_is_member", true, "parent"); put("mother_name", mother.name, "parent"); put("mother_dob", mother.dob, "parent"); put("mother_religion", H.religion, "family"); }
+      if (father) { put("father_is_member", true, "parent"); put("father_name", father.name, "parent"); put("father_dob", father.dob, "parent"); put("father_religion", religion, "family"); }
+      if (mother) { put("mother_is_member", true, "parent"); put("mother_name", mother.name, "parent"); put("mother_dob", mother.dob, "parent"); put("mother_religion", religion, "family"); }
     }
 
     // 5) permanent address = same as head (everyone except the head)
