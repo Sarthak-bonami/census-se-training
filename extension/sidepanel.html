@@ -30,6 +30,16 @@
     </div>
   </section>
 
+  <!-- Household shared -->
+  <section class="panel">
+    <div class="section-head">
+      <strong>Household — shared by all members</strong>
+      <button id="toggleHousehold" class="sm quiet">Show / hide</button>
+    </div>
+    <p class="hint" style="margin:4px 0 0">Fill these once. They're locked (read-only) on every member and auto-filled for all.</p>
+    <div id="householdFields" hidden></div>
+  </section>
+
   <!-- Members -->
   <section class="panel">
     <div class="section-head">
@@ -41,10 +51,11 @@
 
   <!-- Actions -->
   <section class="actions">
-    <button id="fillScreen" class="primary" title="Fill whatever SE screen is open, for the selected member">Fill current screen</button>
-    <button id="autoRun" title="Fill Q7–Q40 and click Save & Continue through all sections">Auto-fill all sections</button>
-    <button id="addAll" title="On the Basic Information screen, add every family member to the roster">Add all members to roster</button>
+    <button id="addAll" class="primary" title="On the Basic Information screen, add every family member to the roster">① Add everyone to the form</button>
+    <button id="autoRun" title="Fill Q7–Q40 and click Save & Continue through all sections for the selected member">② Fill this person’s questions</button>
+    <button id="fillScreen" title="Fill just the screen that's open now, for the selected member">Fill just this screen</button>
   </section>
+  <p class="hint" style="margin:6px 2px 0">Do ① on the “Basic Information” screen, then open a member on the dashboard and do ②. Then review the page and submit it yourself.</p>
 
   <div id="status" class="status" hidden></div>
 
@@ -61,6 +72,7 @@
 
   <script src="data.js"></script>
   <script src="schema.js"></script>
+  <script src="optimize.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

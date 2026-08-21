@@ -4,7 +4,7 @@
    replica uses, so keys line up 1:1 with data-se on the page. */
 (function () {
   "use strict";
-  var DATA = window.SE_DATA, SCHEMA = window.SE_SCHEMA;
+  var DATA = window.SE_DATA, SCHEMA = window.SE_SCHEMA, OPT = window.SE_OPT;
   var STORE = "se_family_state_v1";
 
   var state = { families: [], currentFamilyId: null, currentMemberId: null };
@@ -36,7 +36,7 @@
     return f.members.filter(function (m) { return m.id === state.currentMemberId; })[0] || null;
   }
   function newFamily() {
-    var f = { id: uid(), name: "Family " + (state.families.length + 1), phone: "", members: [] };
+    var f = { id: uid(), name: "Family " + (state.families.length + 1), phone: "", household: {}, members: [] };
     state.families.push(f); state.currentFamilyId = f.id;
     addMember(); persist();
   }
@@ -63,65 +63,86 @@
   var vis = function (f, m) { return f.visibleIf ? !!f.visibleIf(m, m) : true; };
   var req = function (f, m) { return f.required === true || (f.reqFn ? !!f.reqFn(m, m) : false); };
 
-  /* ---- field renderer (writes to member[key]) -------------------------- */
-  function field(f, m) {
+  /* ---- field renderer -------------------------------------------------- */
+  // rec = object to read/write; o.deps = object used for visibility/options
+  // (defaults to rec); o.locked renders a read-only "auto-filled" row.
+  function field(f, rec, o) {
+    o = o || {};
+    var deps = o.deps || rec;
     if (f.type === "heading") return el("div", { class: "qhead", text: f.label });
     if (f.type === "note") return el("div", { class: "hint", text: f.label });
-    if (!vis(f, m)) return null;
-    var cur = m[f.key];
+    if (!o.locked && !vis(f, deps)) return null;
     var lbl = (f.q ? el("span", { class: "qn", text: f.q + "." }) : null);
-    var reRender = function () { persist(); renderEditor(); };
 
+    if (o.locked) {
+      var v = o.value, disp = Array.isArray(v) ? v.join(", ") : (v === true ? "Yes" : v === false ? "No" : (v == null || v === "" ? "" : String(v)));
+      return el("div", { class: "f locked" }, [
+        el("label", {}, [lbl, f.label]),
+        el("div", { class: "lockrow" }, [
+          el("div", { class: "lockval" }, [disp !== "" ? disp : el("span", { class: "empty", text: "—" })]),
+          el("div", { style: "display:flex;gap:8px;align-items:center" }, [
+            el("span", { class: "lockchip " + (o.reason || ""), text: "🔒 " + (OPT ? OPT.reasonLabel(o.reason) : o.reason) }),
+            o.onUnlock ? el("button", { class: "override", onclick: o.onUnlock }, ["Edit"]) : null
+          ])
+        ])
+      ]);
+    }
+
+    var cur = rec[f.key];
+    var reRender = function () { persist(); renderAll(); };
     if (f.type === "checkbox") {
-      var cb = el("input", { type: "checkbox", onchange: function (e) { m[f.key] = e.target.checked; reRender(); } });
+      var cb = el("input", { type: "checkbox", onchange: function (e) { rec[f.key] = e.target.checked; reRender(); } });
       if (cur) cb.checked = true;
       return el("div", { class: "f chk" }, [cb, el("label", {}, [lbl, f.label])]);
     }
-    var wrap = el("div", { class: "f" }, [el("label", {}, [lbl, f.label, req(f, m) ? " *" : ""])]);
+    var wrap = el("div", { class: "f" }, [el("label", {}, [lbl, f.label, req(f, deps) ? " *" : ""])]);
     if (f.type === "select") {
-      var s = el("select", { onchange: function (e) { m[f.key] = e.target.value; reRender(); } });
+      var s = el("select", { onchange: function (e) { rec[f.key] = e.target.value; reRender(); } });
       s.appendChild(el("option", { value: "" }, ["— Select —"]));
-      opt(f, m).forEach(function (o) { var op = el("option", { value: o }, [o]); if (o === cur) op.selected = true; s.appendChild(op); });
+      (f.optionsFn ? (f.optionsFn(deps, deps) || []) : (f.options || [])).forEach(function (op2) {
+        var oo = el("option", { value: op2 }, [op2]); if (op2 === cur) oo.selected = true; s.appendChild(oo);
+      });
       wrap.appendChild(s);
     } else if (f.type === "radio") {
       var rc = el("div", { class: "choices" });
-      opt(f, m).forEach(function (o) {
-        var r = el("input", { type: "radio", name: "r_" + f.key + "_" + m.id, onchange: function () { m[f.key] = o; reRender(); } });
-        if (o === cur) r.checked = true;
-        rc.appendChild(el("label", {}, [r, o]));
+      (f.options || []).forEach(function (op2) {
+        var r = el("input", { type: "radio", name: "r_" + f.key + "_" + (rec.id || "hh"), onchange: function () { rec[f.key] = op2; reRender(); } });
+        if (op2 === cur) r.checked = true;
+        rc.appendChild(el("label", {}, [r, op2]));
       });
       wrap.appendChild(rc);
     } else if (f.type === "multiselect") {
       var arr = Array.isArray(cur) ? cur : [];
       var mc = el("div", { class: "choices" });
-      opt(f, m).forEach(function (o) {
+      (f.options || []).forEach(function (op2) {
         var c = el("input", { type: "checkbox", onchange: function (e) {
-          var a2 = Array.isArray(m[f.key]) ? m[f.key].slice() : [];
-          if (e.target.checked) { if (f.max && a2.length >= f.max) { e.target.checked = false; return; } a2.push(o); }
-          else a2 = a2.filter(function (x) { return x !== o; });
-          m[f.key] = a2; reRender();
+          var a2 = Array.isArray(rec[f.key]) ? rec[f.key].slice() : [];
+          if (e.target.checked) { if (f.max && a2.length >= f.max) { e.target.checked = false; return; } a2.push(op2); }
+          else a2 = a2.filter(function (x) { return x !== op2; });
+          rec[f.key] = a2; reRender();
         } });
-        if (arr.indexOf(o) >= 0) c.checked = true;
-        mc.appendChild(el("label", {}, [c, o]));
+        if (arr.indexOf(op2) >= 0) c.checked = true;
+        mc.appendChild(el("label", {}, [c, op2]));
       });
       wrap.appendChild(mc);
     } else {
       var t = f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "tel" ? "tel" : f.type === "email" ? "email" : "text";
       var inp = el("input", { type: t, placeholder: f.placeholder || "", value: cur == null ? "" : cur,
-        oninput: function (e) { m[f.key] = e.target.value; persist(); updateChips(); } });
+        oninput: function (e) { rec[f.key] = e.target.value; persist(); updateChips(); } });
+      // Date/age changes drive derivations (age, minor defaults) — re-render on commit.
+      if (t === "date" || t === "number") inp.addEventListener("change", function () { persist(); renderAll(); });
       wrap.appendChild(inp);
     }
     if (f.hint) wrap.appendChild(el("div", { class: "hint", text: f.hint }));
     return wrap;
   }
 
-  function accordion(id, title, range, fields, m, disabledNote) {
-    var body = el("div", { class: "body" });
-    if (disabledNote) body.appendChild(el("div", { class: "disabled-note", text: disabledNote }));
-    else fields.forEach(function (f) { var n = field(f, m); if (n) body.appendChild(n); });
-    var head = el("div", { class: "ah", onclick: function () { openSections[id] = !openSections[id]; renderEditor(); } },
-      [el("span", { text: title }), el("span", { class: "rng", text: range || "" })]);
-    return el("div", { class: "acc" + (openSections[id] ? " open" : "") }, [head, body]);
+  // resolved answers = member's own values + household/derived (respecting overrides)
+  function effective(fam, m) {
+    var der = OPT.deriveMember(fam, m), eff = {};
+    Object.keys(m).forEach(function (k) { if (k !== "id" && k !== "overrides") eff[k] = m[k]; });
+    Object.keys(der.values).forEach(function (k) { if (!(m.overrides && m.overrides[k])) eff[k] = der.values[k]; });
+    return { der: der, eff: eff };
   }
 
   /* ---- rendering ------------------------------------------------------- */
@@ -162,20 +183,72 @@
     });
   }
 
-  function renderEditor() {
-    var box = document.getElementById("editor"); clear(box);
-    var m = currentMember();
-    if (!m) { box.appendChild(el("div", { class: "empty", text: "Add a member to edit their details." })); return; }
-    // Basic Information (Q1–6)
-    box.appendChild(accordion("basic", "Basic Information", "Q1–Q6", SCHEMA.MEMBER_FIELDS, m));
-    // Questionnaire sections (Q7–Q40)
-    SCHEMA.SECTIONS.forEach(function (s) {
-      var disabled = (s.appliesTo && !s.appliesTo(m)) ? "Not applicable for this member (based on sex / marital status). This section is skipped on the form." : null;
-      box.appendChild(accordion(s.id, s.title, s.range, s.questions, m, disabled));
-    });
+  // The household "fill once" panel (shared by everyone).
+  function renderHousehold() {
+    var box = document.getElementById("householdFields"); if (!box) return; clear(box);
+    var fam = currentFamily(); if (!fam) return;
+    if (!fam.household) fam.household = {};
+    OPT.HOUSEHOLD_FIELDS.forEach(function (f) { var n = field(f, fam.household); if (n) box.appendChild(n); });
   }
 
-  function renderAll() { renderFamilyBar(); updateChips(); renderEditor(); }
+  // Member editor — "what's left" first, auto-filled details tucked in a drawer.
+  function renderEditor() {
+    var box = document.getElementById("editor"); clear(box);
+    var fam = currentFamily(), m = currentMember();
+    if (!m) { box.appendChild(el("div", { class: "empty", text: "Add a member to edit their details." })); return; }
+    var r = effective(fam, m), der = r.der, eff = r.eff;
+    var overridden = function (k) { return m.overrides && m.overrides[k]; };
+    var mIdx = fam.members.indexOf(m);
+
+    var groups = [{ id: "basic", title: "Basic details", fields: SCHEMA.MEMBER_FIELDS }].concat(
+      SCHEMA.SECTIONS.filter(function (s) { return !(s.appliesTo && !s.appliesTo(eff)); })
+        .map(function (s) { return { id: s.id, title: s.title, fields: s.questions }; }));
+
+    var autoCount = Object.keys(der.locks).filter(function (k) { return !overridden(k); }).length;
+
+    // "Still to fill" — only editable, visible, unanswered/answerable fields.
+    var toFill = el("div", {}), toFillCount = 0;
+    groups.forEach(function (g) {
+      var rows = [];
+      g.fields.forEach(function (f) {
+        if (f.type === "heading" || f.type === "note") return;
+        if (der.locks[f.key] && !overridden(f.key)) return;   // auto-filled -> drawer
+        if (!vis(f, eff)) return;
+        var n = field(f, m, { deps: eff }); if (!n) return;
+        rows.push(n);
+        var val = m[f.key]; if (val == null || val === "" || (Array.isArray(val) && !val.length)) toFillCount++;
+      });
+      if (rows.length) { toFill.appendChild(el("div", { class: "qhead", text: g.title })); rows.forEach(function (x) { toFill.appendChild(x); }); }
+    });
+
+    box.appendChild(el("div", { class: "savings", text: "✅ " + autoCount + " details auto-filled for " + memberLabel(m, mIdx) + "." + (toFillCount ? (" Please fill " + toFillCount + " more below.") : " Nothing left to fill 🎉") }));
+    box.appendChild(toFill);
+
+    // "Auto-filled for you" drawer — locked, viewable, with per-field Edit override.
+    var doneBody = el("div", { class: "body" }); var anyDone = false;
+    groups.forEach(function (g) {
+      g.fields.forEach(function (f) {
+        if (f.type === "heading" || f.type === "note") return;
+        if (der.locks[f.key] && !overridden(f.key)) {
+          anyDone = true;
+          doneBody.appendChild(field(f, m, {
+            locked: true, reason: der.locks[f.key], value: der.values[f.key],
+            onUnlock: function () { if (!m.overrides) m.overrides = {}; m.overrides[f.key] = true; if (m[f.key] === undefined || m[f.key] === "") m[f.key] = der.values[f.key]; persist(); renderAll(); }
+          }));
+        }
+      });
+    });
+    if (anyDone) {
+      var open = !!openSections.done;
+      box.appendChild(el("div", { class: "acc" + (open ? " open" : "") }, [
+        el("div", { class: "ah", onclick: function () { openSections.done = !openSections.done; renderEditor(); } },
+          [el("span", { text: "Auto-filled for you (" + autoCount + ")" }), el("span", { class: "rng", text: open ? "hide" : "show" })]),
+        doneBody
+      ]));
+    }
+  }
+
+  function renderAll() { renderFamilyBar(); renderHousehold(); updateChips(); renderEditor(); }
 
   /* ---- talking to the page -------------------------------------------- */
   function say(text, cls) {
@@ -195,31 +268,32 @@
       });
     });
   }
-  function flatAnswers(m) {
-    var out = {};
-    Object.keys(m).forEach(function (k) { if (k !== "id" && m[k] !== "" && m[k] != null) out[k] = m[k]; });
+  // Values sent to the page = member's own answers + household/derived (respecting overrides).
+  function resolvedAnswers(fam, m) {
+    var eff = effective(fam, m).eff, out = {};
+    Object.keys(eff).forEach(function (k) { var v = eff[k]; if (v !== "" && v != null && !(Array.isArray(v) && !v.length)) out[k] = v; });
     return out;
   }
 
   function fillScreen() {
-    var m = currentMember(); if (!m) { say("Select a member first.", "err"); return; }
+    var f = currentFamily(), m = currentMember(); if (!m) { say("Select a member first.", "err"); return; }
     withContent(function (tab) {
-      say("Filling current screen for " + memberLabel(m, 0) + "…");
-      chrome.tabs.sendMessage(tab.id, { cmd: "FILL", answers: flatAnswers(m), hints: HINTS }, function () { void chrome.runtime.lastError; });
+      say("Filling this screen for " + memberLabel(m, 0) + "…");
+      chrome.tabs.sendMessage(tab.id, { cmd: "FILL", answers: resolvedAnswers(f, m), hints: HINTS }, function () { void chrome.runtime.lastError; });
     });
   }
   function autoRun() {
-    var m = currentMember(); if (!m) { say("Select a member first.", "err"); return; }
+    var f = currentFamily(), m = currentMember(); if (!m) { say("Select a member first.", "err"); return; }
     withContent(function (tab) {
-      say("Auto-filling all sections for " + memberLabel(m, 0) + "…");
-      chrome.tabs.sendMessage(tab.id, { cmd: "AUTORUN_SECTIONS", answers: flatAnswers(m), hints: HINTS }, function () { void chrome.runtime.lastError; });
+      say("Filling all questions for " + memberLabel(m, 0) + "…");
+      chrome.tabs.sendMessage(tab.id, { cmd: "AUTORUN_SECTIONS", answers: resolvedAnswers(f, m), hints: HINTS }, function () { void chrome.runtime.lastError; });
     });
   }
   function addAll() {
     var f = currentFamily(); if (!f || !f.members.length) { say("No members to add.", "err"); return; }
     withContent(function (tab) {
       say("Adding " + f.members.length + " member(s) to the roster…");
-      chrome.tabs.sendMessage(tab.id, { cmd: "ADD_ALL_MEMBERS", members: f.members.map(flatAnswers) }, function () { void chrome.runtime.lastError; });
+      chrome.tabs.sendMessage(tab.id, { cmd: "ADD_ALL_MEMBERS", members: f.members.map(function (m) { return resolvedAnswers(f, m); }) }, function () { void chrome.runtime.lastError; });
     });
   }
 
@@ -340,6 +414,9 @@
     document.getElementById("autoDetect").onchange = function (e) {
       if (e.target.checked) startDetect();
       else { stopDetect(); document.getElementById("detectBanner").hidden = true; }
+    };
+    document.getElementById("toggleHousehold").onclick = function () {
+      var box = document.getElementById("householdFields"); box.hidden = !box.hidden;
     };
   }
 

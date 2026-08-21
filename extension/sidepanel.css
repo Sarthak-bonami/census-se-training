@@ -61,6 +61,17 @@ main#editor{margin-top:8px}
 .f.chk input{width:auto;margin:0}
 .f.chk > label{margin:0;font-weight:500}
 .qhead{font-weight:700;color:#0b1f4d;border-left:3px solid var(--accent);padding-left:7px;margin:12px 0 4px;font-size:12.5px}
+/* prefilled + locked fields */
+.f.locked{background:#f5f8fa;border:1px dashed #cfd8e0;border-radius:7px;padding:6px 8px;margin:8px 0}
+.f.locked > label{color:var(--muted)}
+.f.locked .lockval{font-weight:600;color:var(--ink);margin-top:2px;word-break:break-word}
+.f.locked .lockval .empty{color:#a2adb8;font-weight:400}
+.lockrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
+.lockchip{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#194b86;background:#e8f3ff;border-radius:999px;padding:1px 7px;white-space:nowrap}
+.lockchip.auto{color:#6b4e00;background:#fdecc8}
+.lockchip.parent,.lockchip.spouse{color:#155e3f;background:#e3f4ea}
+.override{border:none;background:none;color:var(--accent-dark);font-size:10.5px;cursor:pointer;padding:0}
+.savings{font-size:11px;color:var(--green);font-weight:700;margin:2px 0 6px}
 .disabled-note{background:#fff7ee;border:1px solid #ffe2c2;color:#8a5a1b;border-radius:7px;padding:7px 9px;font-size:11px}
 
 footer{margin-top:12px;display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted)}

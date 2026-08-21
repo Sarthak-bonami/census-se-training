@@ -21,14 +21,19 @@ and best-effort on the live census portal.
 
 ## Everyday flow
 1. **Create a family** (`+ Family`), give it a **name** ("Family 1") and the household
-   **phone number**. Add each member (`+ Add member`) — father, mother, children — and
-   fill their Basic Information (Q1–6) and the Q7–Q40 sections once. It autosaves.
-2. Open the SE form. On the **Basic Information** screen, click **Add all members to
-   roster** — every member's Q1–6 is filled and saved in turn.
-3. Go to the dashboard → **Continue Self Enumeration** for a member → in the panel pick
-   that member and click **Auto-fill all sections** (fills Q7–Q40 and clicks *Save &
-   Continue* through the wizard) or **Fill current screen** (one screen, you advance).
-4. Review the page and submit it yourself. **The extension never submits.**
+   **phone number**.
+2. **Fill the household basics once** — open *"Household — shared by all members"* and set
+   religion, mother tongue, caste (SC/ST), nationality and usual residence. These are shared
+   by everyone and locked on each member.
+3. **Add members** (`+ Add member`) — for each person the editor leads with
+   *"✅ N details auto-filled — please fill M more"* and shows only what's left. Everything
+   shared or derivable (parents, spouse, age from DOB, children's defaults) is pre-filled and
+   sits in the **"Auto-filled for you"** drawer (locked, tagged by source, with **Edit** to
+   override). See [`OPTIMIZATIONS.md`](OPTIMIZATIONS.md) for the full list.
+4. Open the SE form. On the **Basic Information** screen click **① Add everyone to the form**.
+5. Go to the dashboard → open a member → **② Fill this person's questions** (fills Q7–Q40 and
+   clicks *Save & Continue* through the wizard). Or **Fill just this screen** to do one screen.
+6. Review the page and submit it yourself. **The extension never submits.**
 
 ## Auto-recognition by phone
 - **Auto-detect family by phone** (on by default): the panel watches the open SE page for
