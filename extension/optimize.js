@@ -48,6 +48,15 @@
     // 1) household-shared
     HOUSEHOLD_KEYS.concat(NATIVE.map(function (f) { return f.key; })).forEach(function (k) { put(k, H[k], "family"); });
     put("religion", religion, "family");
+    put("nationality", H.nationality || "Indian", "family");   // nationality defaults to Indian
+
+    // 1b) place + religion of parents default to the household's usual residence (overridable)
+    put("father_pob", "Within India", "family"); put("mother_pob", "Within India", "family");
+    put("father_religion", religion, "family"); put("mother_religion", religion, "family");
+    if (H.home_state) { put("father_state", H.home_state, "family"); put("mother_state", H.home_state, "family"); }
+    if (H.home_district) { put("father_district", H.home_district, "family"); put("mother_district", H.home_district, "family"); }
+    if (H.home_village) { put("father_village", H.home_village, "family"); put("mother_village", H.home_village, "family"); }
+    put("has_disability", "No", "auto");   // default: no disability (overridable)
 
     // 2) age from DOB
     if ((member.age === "" || member.age == null) && member.dob) { var a = ageOf(member); if (a != null) put("age", String(a), "auto"); }
@@ -88,8 +97,13 @@
       if (pm.length) setParents(pm.filter(function (p) { return p.sex === "Male"; })[0], pm.filter(function (p) { return p.sex === "Female"; })[0]);
     }
 
-    // 5) permanent address = same as head (everyone except the head)
+    // 5) permanent address — same as head for others; the head's from usual residence
     if (member.relationship && member.relationship !== "Head") put("perm_same_as_head", true, "auto");
+    else if (member.relationship === "Head") {
+      if (H.home_state) put("perm_state", H.home_state, "family");
+      if (H.home_district) put("perm_district", H.home_district, "family");
+      if (H.home_village) put("perm_town", H.home_village, "family");
+    }
 
     // 6) birthplace: default born in this village/town (not outside)
     if (member.born_outside === undefined) put("born_outside", false, "auto");

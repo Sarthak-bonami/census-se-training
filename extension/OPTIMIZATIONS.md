@@ -31,6 +31,13 @@ a 3-person family goes from ~40 questions to ~16 — the rest are auto-filled.)
 14. **Head's mobile** (Q36) — defaults to the household's registered phone number.
 15. **Sex options** (Q3) — constrained by relationship (Daughter-in-law → Female, Son-in-law → Male…).
 
+## A′. Place cascades from the household's usual residence  (tag: 🔒 from family)
+- **Nationality** (Q8) defaults to **Indian**.
+- **Parents' place of birth** (Q11c / Q12c): scope → *Within India*, and **State / District /
+  Village** default to the household's usual residence; **parents' religion** = the family religion.
+- **Head's permanent address** (Q30) = the household's usual residence.
+- **No disability** (Q13a) is the default (overridable) — so the disability sub-question is skipped.
+
 ## C. Derived from the member's own DOB / age → computed, never asked  (tag: auto)
 16. **Age** (Q4b) — computed from Date of Birth (ask one, not both).
 17. **Minors (<18): Marital status = Never Married**, and **Voter ID / Passport / Driving
@@ -50,6 +57,13 @@ a 3-person family goes from ~40 questions to ~16 — the rest are auto-filled.)
   **Edit** to override an exception.
 - **On the form**: every auto-filled value is sent along with the few you typed, so
   autofill still completes the whole schedule.
+
+## Geography & data
+State and District use **real India data** — 37 States/UTs and ~730 districts. **Tehsil,
+Village/Town and Locality are free text** (type the real name) and shared once per household;
+a full all-India tehsil/village list (tens of thousands of rows) isn't bundled — the live
+portal cascades those from its own backend, and typed values still autofill there. Ask if you
+want real tehsil lists loaded for a specific State/UT you operate in.
 
 ## Safe by design
 All derivations are **defaults you can override**, nothing is invented that changes a

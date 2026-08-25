@@ -290,19 +290,23 @@
       options.forEach(function (o) { var op = el("option", { value: o }, [o]); if (o === L[key]) op.selected = true; s.appendChild(op); });
       return el("div", { class: "field" }, [el("label", { text: labelKey }), s]);
     }
+    function ti(labelKey, key) {
+      var i = el("input", { type: "text", "data-se": "loc_" + key, placeholder: "Enter " + labelKey, value: L[key] || "", oninput: function (e) { L[key] = e.target.value; save(); } });
+      return el("div", { class: "field" }, [el("label", { text: labelKey }), i]);
+    }
     var ready = L.state && L.district && L.village;
     return el("div", { class: "wrap wide" }, [
       el("div", { class: "card" }, [
         el("h2", { class: "se-title", text: "Location Mapping" }),
-        el("p", { class: "sub", text: "Select your City/District, Tehsil, Village/Town and Locality, then confirm." }),
+        el("p", { class: "sub", text: "Select your City/District, then enter Tehsil, Village/Town and Locality, and confirm." }),
         el("div", { class: "split" }, [
           el("div", {}, [
             el("div", { class: "grid2" }, [
               dd("State/UT", "state", DATA.STATES, true),
               dd("City / District", "district", DATA.districtsFor(L.state), false),
-              dd("Tehsil", "tehsil", DATA.TEHSILS, false),
-              dd("Village / Town", "village", DATA.VILLAGES, false),
-              dd("Locality", "locality", DATA.LOCALITIES, false)
+              ti("Tehsil", "tehsil"),
+              ti("Village / Town", "village"),
+              ti("Locality", "locality")
             ]),
             el("div", { class: "btnbar" }, [
               el("button", { class: "btn ghost", onclick: function () { L.district = L.tehsil = L.village = L.locality = ""; save(); render(); toast("Cleared City, Tehsil, Village and Locality"); } }, ["Reset"]),
